@@ -1,0 +1,16 @@
+{
+    "jupyter-lite-schema-version": 0,
+    "jupyter-config-data": {
+        "contentsStorageName": "cochlear-implant-demo",
+        "appName": "Cochlear Implant Demo",
+        "faviconUrl": "https://raw.githubusercontent.com/user/repo/main/favicon.ico",
+        "settingsOverrides": {
+            "@jupyterlab/apputils-extension:themes": {
+                "theme": "JupyterLab Dark"
+            }
+        },
+        "disabledExtensions": [
+            "@jupyterlite/xeus-extension"
+        ]
+    }
+}
