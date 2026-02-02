@@ -1,0 +1,187 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install voici jupyterlab numpy scipy matplotlib soundfile ipywidgets
+
+      - name: Build with Voici
+        run: |
+          voici build --contents notebooks/ --output-dir _output
+
+      - name: Copy audio files
+        run: |
+          mkdir -p _output/files/audio
+          cp -r audio/* _output/files/audio/
+
+      - name: Copy source modules
+        run: |
+          mkdir -p _output/files/src
+          cp -r src/* _output/files/src/
+
+      - name: Add loading page
+        run: |
+          cat > _output/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Cochlear Implant Signal Processing Demo</title>
+              <style>
+                  * { margin: 0; padding: 0; box-sizing: border-box; }
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+                      min-height: 100vh;
+                      display: flex;
+                      flex-direction: column;
+                      align-items: center;
+                      justify-content: center;
+                      color: white;
+                      padding: 20px;
+                  }
+                  .container {
+                      text-align: center;
+                      max-width: 600px;
+                  }
+                  h1 {
+                      font-size: 2.5em;
+                      margin-bottom: 10px;
+                      background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+                      -webkit-background-clip: text;
+                      -webkit-text-fill-color: transparent;
+                      background-clip: text;
+                  }
+                  .emoji { font-size: 4em; margin-bottom: 20px; }
+                  .subtitle {
+                      font-size: 1.2em;
+                      color: #a0a0a0;
+                      margin-bottom: 40px;
+                  }
+                  .loading {
+                      display: flex;
+                      flex-direction: column;
+                      align-items: center;
+                      gap: 20px;
+                  }
+                  .spinner {
+                      width: 60px;
+                      height: 60px;
+                      border: 4px solid rgba(255,255,255,0.1);
+                      border-top-color: #3a7bd5;
+                      border-radius: 50%;
+                      animation: spin 1s linear infinite;
+                  }
+                  @keyframes spin {
+                      to { transform: rotate(360deg); }
+                  }
+                  .progress-text {
+                      color: #a0a0a0;
+                      font-size: 0.9em;
+                  }
+                  .pipeline {
+                      display: flex;
+                      flex-wrap: wrap;
+                      justify-content: center;
+                      gap: 10px;
+                      margin-top: 30px;
+                  }
+                  .stage {
+                      background: rgba(255,255,255,0.1);
+                      padding: 8px 16px;
+                      border-radius: 20px;
+                      font-size: 0.85em;
+                      opacity: 0.7;
+                  }
+                  .btn {
+                      display: inline-block;
+                      margin-top: 30px;
+                      padding: 15px 40px;
+                      background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+                      color: white;
+                      text-decoration: none;
+                      border-radius: 30px;
+                      font-size: 1.1em;
+                      font-weight: 600;
+                      transition: transform 0.2s, box-shadow 0.2s;
+                  }
+                  .btn:hover {
+                      transform: translateY(-2px);
+                      box-shadow: 0 10px 30px rgba(58, 123, 213, 0.4);
+                  }
+                  .note {
+                      margin-top: 20px;
+                      font-size: 0.8em;
+                      color: #666;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <div class="emoji">🦻</div>
+                  <h1>Cochlear Implant Demo</h1>
+                  <p class="subtitle">Interactive Signal Processing Visualization</p>
+                  
+                  <div class="pipeline">
+                      <span class="stage">🎤 Input Speech</span>
+                      <span class="stage">📊 Filterbank</span>
+                      <span class="stage">📈 Envelope</span>
+                      <span class="stage">🎯 n-of-m Selection</span>
+                      <span class="stage">🔊 Vocoder</span>
+                  </div>
+                  
+                  <a href="voici/render/demo.html" class="btn">Launch Demo →</a>
+                  
+                  <p class="note">
+                      ⏱️ First load may take 15-30 seconds (downloading Python runtime)
+                  </p>
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "_output"
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
